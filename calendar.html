@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カレンダー</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f0;
+    --bg-tertiary: #eeede8;
+    --text-primary: #1a1a18;
+    --text-secondary: #6b6b67;
+    --text-tertiary: #a0a09c;
+    --border-light: rgba(0,0,0,0.10);
+    --border-mid: rgba(0,0,0,0.18);
+    --border-strong: rgba(0,0,0,0.28);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-mid: #B5D4F4;
+    --blue-dark: #0C447C;
+    --red: #C84040;
+    --red-light: #FCEBEB;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1e1e1c;
+      --bg-secondary: #2a2a27;
+      --bg-tertiary: #141412;
+      --text-primary: #e8e8e4;
+      --text-secondary: #9a9a95;
+      --text-tertiary: #6a6a66;
+      --border-light: rgba(255,255,255,0.08);
+      --border-mid: rgba(255,255,255,0.14);
+      --border-strong: rgba(255,255,255,0.22);
+      --blue: #378ADD;
+      --blue-light: #0c1e2e;
+      --blue-mid: #0e2d4a;
+      --blue-dark: #85B7EB;
+      --red: #E06060;
+      --red-light: #2a1010;
+    }
+  }
+
+  /* イベントカラー (light) */
+  .chip-blue  { background:#E6F1FB; color:#0C447C; }
+  .chip-blue:hover  { background:#B5D4F4; }
+  .chip-green { background:#EAF3DE; color:#27500A; }
+  .chip-green:hover { background:#C0DD97; }
+  .chip-amber { background:#FAEEDA; color:#633806; }
+  .chip-amber:hover { background:#FAC775; }
+  .chip-pink  { background:#FBEAF0; color:#72243E; }
+  .chip-pink:hover  { background:#F4C0D1; }
+
+  @media (prefers-color-scheme: dark) {
+    .chip-blue  { background:#0c1e2e; color:#85B7EB; }
+    .chip-blue:hover  { background:#0e2d4a; }
+    .chip-green { background:#173404; color:#C0DD97; }
+    .chip-green:hover { background:#27500A; }
+    .chip-amber { background:#412402; color:#FAC775; }
+    .chip-amber:hover { background:#633806; }
+    .chip-pink  { background:#4B1528; color:#F4C0D1; }
+    .chip-pink:hover  { background:#72243E; }
+  }
+
+  /* カラーピッカー */
+  .color-row { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  .color-row label { font-size:12px; color:var(--text-secondary); width:28px; flex-shrink:0; }
+  .color-swatches { display:flex; gap:6px; }
+  .color-swatch {
+    width:22px; height:22px; border-radius:50%; cursor:pointer;
+    border: 2px solid transparent; transition: border-color 0.12s, transform 0.1s;
+  }
+  .color-swatch:hover { transform: scale(1.15); }
+  .color-swatch.selected { border-color: var(--text-primary); }
+  .swatch-blue  { background:#378ADD; }
+  .swatch-green { background:#639922; }
+  .swatch-amber { background:#EF9F27; }
+  .swatch-pink  { background:#D4537E; }
+
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', sans-serif;
+    background: var(--bg-secondary);
+    min-height: 100vh;
+    padding: 1.5rem;
+    color: var(--text-primary);
+  }
+
+  .app { max-width: 1000px; margin: 0 auto; }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 1.25rem;
+  }
+
+  .month-title {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+  }
+
+  .nav-btns { display: flex; gap: 6px; align-items: center; }
+
+  .nav-btn {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    padding: 6px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .nav-btn:hover { background: var(--bg-tertiary); }
+  .today-btn { font-size: 13px; color: var(--text-secondary); }
+
+  .weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+  .weekday {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 6px 0;
+  }
+  .weekday.sun { color: var(--red); }
+  .weekday.sat { color: var(--blue); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  .day-cell {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-md);
+    min-height: 108px;
+    padding: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    overflow: hidden;
+  }
+  .day-cell:hover { border-color: var(--border-strong); }
+  .day-cell.other-month { background: var(--bg-secondary); opacity: 0.45; pointer-events: none; }
+  .day-cell.today { border-color: var(--red); border-width: 1px; }
+
+  .day-num {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .day-num.sun { color: var(--red); }
+  .day-num.sat { color: var(--blue); }
+  .day-cell.today .day-num {
+    background: var(--red);
+    color: white !important;
+  }
+
+  .event-chip {
+    font-size: 11px;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background 0.12s;
+    display: block;
+  }
+
+  .more-label {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    margin-top: 1px;
+    padding-left: 4px;
+  }
+
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .modal {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border-mid);
+    padding: 1.5rem;
+    width: 360px;
+    max-width: 92vw;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
+  .modal-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .modal-date {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  .close-x {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-tertiary);
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .close-x:hover { color: var(--text-primary); }
+
+  .event-list {
+    border-top: 0.5px solid var(--border-light);
+    padding-top: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .event-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 0.5px solid var(--border-light);
+  }
+  .event-item:last-child { border-bottom: none; }
+
+  .event-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    margin-top: 2px;
+    min-width: 36px;
+  }
+
+  .event-text {
+    font-size: 13px;
+    color: var(--text-primary);
+    flex: 1;
+    word-break: break-all;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .event-text:hover { color: var(--blue); }
+
+  .del-btn {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    flex-shrink: 0;
+    line-height: 1.5;
+  }
+  .del-btn:hover { color: var(--red); }
+
+  .add-section { margin-top: 0.5rem; }
+
+  .time-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .time-row label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    width: 28px;
+  }
+
+  .modal input[type=text],
+  .modal input[type=time],
+  .modal textarea {
+    border: 0.5px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    outline: none;
+    width: 100%;
+  }
+  .modal input[type=time] { width: auto; }
+  .modal textarea { resize: vertical; margin-bottom: 10px; }
+  .modal input:focus, .modal textarea:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px rgba(56,138,221,0.15);
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 0.5rem;
+  }
+
+  .btn {
+    border: 0.5px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    padding: 7px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: background 0.12s;
+  }
+  .btn:hover { background: var(--bg-secondary); }
+
+  .btn.primary {
+    background: var(--blue);
+    color: white;
+    border-color: var(--blue);
+  }
+  .btn.primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
+
+  .section-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .divider {
+    border: none;
+    border-top: 0.5px solid var(--border-light);
+    margin: 0.75rem 0;
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+const STORAGE_KEY = 'tomo_calendar_v1';
+const DAYS = ['日','月','火','水','木','金','土'];
+const COLORS = ['blue','green','amber','pink'];
+const COLOR_LABELS = { blue:'青', green:'緑', amber:'黄', pink:'ピンク' };
+// 月曜始まり: 月火水木金土日
+const WEEK_LABELS = ['月','火','水','木','金','土','日'];
+
+function loadEvents() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveEvents(ev) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(ev));
+}
+
+let state = {
+  year: new Date().getFullYear(),
+  month: new Date().getMonth(),
+  events: loadEvents(),
+  modal: null,
+  selectedColor: 'blue',
+};
+
+function dateKey(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function formatDateJa(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  const jsDay = new Date(y, m-1, d).getDay(); // 0=日
+  const label = DAYS[jsDay];
+  return `${y}年${m}月${d}日（${label}）`;
+}
+
+function daysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
+// 月曜始まり: getDay()は日=0,月=1,...土=6 → 月曜基準offset=(getDay()+6)%7
+function firstDow(y, m) { return (new Date(y, m, 1).getDay() + 6) % 7; }
+
+function render() {
+  const { year, month, events, modal } = state;
+  const today = new Date();
+  const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const dim = daysInMonth(year, month);
+  const fd = firstDow(year, month);
+  const prevY = month === 0 ? year-1 : year, prevM = month === 0 ? 11 : month-1;
+  const nextY = month === 11 ? year+1 : year, nextM = month === 11 ? 0 : month+1;
+  const prevDim = daysInMonth(prevY, prevM);
+
+  let cells = [];
+  for (let i = fd-1; i >= 0; i--) cells.push({ day: prevDim-i, cm: false, y: prevY, m: prevM });
+  for (let d = 1; d <= dim; d++) cells.push({ day: d, cm: true, y: year, m: month });
+  const rem = (7 - cells.length % 7) % 7;
+  for (let d = 1; d <= rem; d++) cells.push({ day: d, cm: false, y: nextY, m: nextM });
+
+  const weekdayHTML = WEEK_LABELS.map((d,i) =>
+    `<div class="weekday ${i===5?'sat':i===6?'sun':''}">${d}</div>`
+  ).join('');
+
+  const gridHTML = cells.map(cell => {
+    const key = dateKey(cell.y, cell.m, cell.day);
+    const evs = events[key] || [];
+    const jsDay = new Date(cell.y, cell.m, cell.day).getDay(); // 0=日
+    const isSun = jsDay === 0, isSat = jsDay === 6;
+    const isToday = key === todayKey;
+    const chipsHTML = evs.slice(0,3).map((ev, idx) =>
+      `<span class="event-chip chip-${ev.color||'blue'}" onclick="openModal('${key}',${idx},event)">${ev.time ? ev.time+' ' : ''}${escHtml(ev.text)}</span>`
+    ).join('');
+    const more = evs.length > 3 ? `<div class="more-label">+${evs.length-3}件</div>` : '';
+    return `<div class="day-cell${!cell.cm?' other-month':''}${isToday?' today':''}" onclick="openModal('${key}',null,event)">
+      <div class="day-num${isSun?' sun':isSat?' sat':''}">${cell.day}</div>
+      ${chipsHTML}${more}
+    </div>`;
+  }).join('');
+
+  let modalHTML = '';
+  if (modal) {
+    const evs = events[modal.key] || [];
+    const evListHTML = evs.length > 0
+      ? `<div class="event-list">${evs.map((ev,i) =>
+          `<div class="event-item">
+            <span style="width:8px;height:8px;border-radius:50%;background:${colorDot(ev.color||'blue')};flex-shrink:0;margin-top:5px;display:inline-block;"></span>
+            ${ev.time ? `<span class="event-time">${ev.time}</span>` : '<span class="event-time"></span>'}
+            <span class="event-text" onclick="startEdit('${modal.key}',${i})">${escHtml(ev.text)}</span>
+            <button class="del-btn" onclick="deleteEvent('${modal.key}',${i})">✕</button>
+          </div>`
+        ).join('')}</div>` : '';
+
+    const swatchesNew = COLORS.map(c =>
+      `<span class="color-swatch swatch-${c}${state.selectedColor===c?' selected':''}" onclick="selectColor('${c}')" title="${COLOR_LABELS[c]}"></span>`
+    ).join('');
+    const editEv = modal.editIdx !== null ? evs[modal.editIdx] : null;
+    const swatchesEdit = editEv ? COLORS.map(c =>
+      `<span class="color-swatch swatch-${c}${(editEv.color||'blue')===c?' selected':''}" onclick="selectEditColor('${modal.key}',${modal.editIdx},'${c}')" title="${COLOR_LABELS[c]}"></span>`
+    ).join('') : '';
+
+    const bodyHTML = modal.editIdx !== null
+      ? `<div class="section-label">編集</div>
+         <div class="time-row"><label>時刻</label><input type="time" id="edit-time" value="${editEv?.time||''}"></div>
+         <div class="color-row"><label>色</label><div class="color-swatches">${swatchesEdit}</div></div>
+         <textarea id="edit-text" rows="3">${escHtml(editEv?.text||'')}</textarea>
+         <div class="modal-actions">
+           <button class="btn" onclick="cancelEdit()">キャンセル</button>
+           <button class="btn primary" onclick="saveEdit('${modal.key}',${modal.editIdx})">保存</button>
+         </div>`
+      : `<hr class="divider">
+         <div class="section-label">新しい予定</div>
+         <div class="time-row"><label>時刻</label><input type="time" id="new-time"></div>
+         <div class="color-row"><label>色</label><div class="color-swatches">${swatchesNew}</div></div>
+         <input type="text" id="new-event" placeholder="予定を入力..." onkeydown="if(event.key==='Enter')addEvent('${modal.key}')">
+         <div class="modal-actions">
+           <button class="btn" onclick="closeModal()">閉じる</button>
+           <button class="btn primary" onclick="addEvent('${modal.key}')">追加</button>
+         </div>`;
+
+    modalHTML = `<div class="modal-bg" onclick="bgClose(event)">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <div class="modal-title">${formatDateJa(modal.key)}</div>
+          </div>
+          <button class="close-x" onclick="closeModal()">✕</button>
+        </div>
+        ${evListHTML}
+        ${bodyHTML}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('app').innerHTML = `
+    <div class="header">
+      <div class="nav-btns">
+        <button class="nav-btn" onclick="prevMonth()">‹</button>
+        <button class="nav-btn today-btn" onclick="goToday()">今日</button>
+        <button class="nav-btn" onclick="nextMonth()">›</button>
+      </div>
+      <div class="month-title">${year}年 ${month+1}月</div>
+    </div>
+    <div class="weekdays">${weekdayHTML}</div>
+    <div class="grid">${gridHTML}</div>
+    ${modalHTML}
+  `;
+
+  if (modal && modal.editIdx === null) {
+    setTimeout(() => { const el = document.getElementById('new-event'); if(el) el.focus(); }, 30);
+  }
+  if (modal && modal.editIdx !== null) {
+    setTimeout(() => {
+      const el = document.getElementById('edit-text');
+      if(el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    }, 30);
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function colorDot(c) {
+  const map = { blue:'#378ADD', green:'#639922', amber:'#EF9F27', pink:'#D4537E' };
+  return map[c] || map.blue;
+}
+
+function selectColor(c) {
+  state.selectedColor = c;
+  render();
+  setTimeout(() => { const el = document.getElementById('new-event'); if(el) el.focus(); }, 30);
+}
+
+function selectEditColor(key, idx, c) {
+  if (!state.events[key] || !state.events[key][idx]) return;
+  state.events[key][idx].color = c;
+  saveEvents(state.events);
+  render();
+  setTimeout(() => { const el = document.getElementById('edit-text'); if(el) el.focus(); }, 30);
+}
+
+function openModal(key, idx, e) {
+  if (e) e.stopPropagation();
+  state.modal = { key, editIdx: null };
+  render();
+}
+
+function closeModal() { state.modal = null; render(); }
+
+function bgClose(e) { if (e.target === e.currentTarget) closeModal(); }
+
+function addEvent(key) {
+  const inp = document.getElementById('new-event');
+  const timeInp = document.getElementById('new-time');
+  const text = inp?.value.trim() || '';
+  if (!text) { inp?.focus(); return; }
+  if (!state.events[key]) state.events[key] = [];
+  state.events[key].push({ text, time: timeInp?.value || '', color: state.selectedColor });
+  state.events[key].sort((a,b) => (a.time||'99:99').localeCompare(b.time||'99:99'));
+  saveEvents(state.events);
+  state.modal = null;
+  render();
+}
+
+function deleteEvent(key, idx) {
+  state.events[key]?.splice(idx, 1);
+  if (state.events[key]?.length === 0) delete state.events[key];
+  saveEvents(state.events);
+  render();
+}
+
+function startEdit(key, idx) {
+  state.modal = { key, editIdx: idx };
+  render();
+}
+
+function cancelEdit() {
+  state.modal = { key: state.modal.key, editIdx: null };
+  render();
+}
+
+function saveEdit(key, idx) {
+  const text = document.getElementById('edit-text')?.value.trim() || '';
+  const time = document.getElementById('edit-time')?.value || '';
+  if (!text) return;
+  if (!state.events[key]) state.events[key] = [];
+  const existing = state.events[key]?.[idx];
+  state.events[key][idx] = { text, time, color: existing?.color || 'blue' };
+  state.events[key].sort((a,b) => (a.time||'99:99').localeCompare(b.time||'99:99'));
+  saveEvents(state.events);
+  state.modal = { key, editIdx: null };
+  render();
+}
+
+function prevMonth() {
+  if (state.month === 0) { state.year--; state.month = 11; } else state.month--;
+  render();
+}
+function nextMonth() {
+  if (state.month === 11) { state.year++; state.month = 0; } else state.month++;
+  render();
+}
+function goToday() {
+  const t = new Date();
+  state.year = t.getFullYear(); state.month = t.getMonth();
+  render();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && state.modal) closeModal();
+});
+
+render();
+</script>
+</body>
+</html>
